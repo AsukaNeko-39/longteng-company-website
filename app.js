@@ -78,11 +78,3 @@ document.querySelectorAll('[data-expertise]').forEach(explorer => {
     });
   });
 });
-if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  document.documentElement.classList.add('motion-ready');
-  const observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){e.target.classList.add('in-view');observer.unobserve(e.target);}},{threshold:0.08});
-  document.querySelectorAll('main>section:not(:first-child),.signature-farm,.signature-football').forEach(el=>{el.classList.add('reveal');observer.observe(el);});
-}
-const topButton=document.createElement('button');topButton.className='scroll-top';topButton.textContent='↑';topButton.setAttribute('aria-label','返回页面顶部');document.body.append(topButton);
-function updateTop(){topButton.classList.toggle('visible',window.scrollY>650);}
-window.addEventListener('scroll',updateTop,{passive:true});updateTop();topButton.addEventListener('click',()=>window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}));
