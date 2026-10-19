@@ -50,7 +50,9 @@
       function selectMap(id){
         mapShowcase.dataset.active=id;
         for(const button of mapButtons){const active=button.dataset.project===id;button.setAttribute('aria-pressed',String(active));button.setAttribute('aria-label',(active?'当前展示：':'切换至')+button.dataset.name);}
-        qa('.signature-copy',mapCopies).forEach(copy=>{copy.hidden=copy.dataset.project!==id;});
+        const copies=qa('.signature-copy',mapCopies),selected=copies.find(copy=>copy.dataset.project===id);
+        if(window.companyMotion)window.companyMotion.swap(mapCopies,copies,selected,!!mapShowcase.closest('.is-current'));
+        else copies.forEach(copy=>{copy.hidden=copy!==selected;copy.inert=copy!==selected;});
       }
       selectHomeMap=selectMap;
       mapProjects.forEach(([id,name,selector,imageSelector])=>{
@@ -67,7 +69,14 @@
       const homeCase=q('.home-case');
       if(shortPhone){q('.section-heading',homeCase)?.remove();q('.scenario-links',homeCase)?.remove();}
       sheet('case','智慧园区应用',[homeCase],'scene--home-case');
-      sheet('company','公司团队与产学研合作',[q('.home-about'),q('.partner-line')],'scene--company-partners','#edf5f6');
+      const homeCompany=q('.home-about'),partners=q('.partner-line');
+      const partnerAssets=[['survey','png'],['pingan','png'],['whu','png'],['csust','png'],['hnust','png']];
+      qa('.partner-names>span',partners).forEach((card,i)=>{
+        const [id,extension]=partnerAssets[i];card.className='partner-card';card.dataset.partner=id;
+        const image=document.createElement('img');image.src='assets/partners/'+id+'.'+extension;image.alt='';image.setAttribute('aria-hidden','true');image.decoding='sync';
+        card.prepend(div('partner-logo',[image]));
+      });
+      sheet('company','公司团队与产学研合作',[homeCompany,partners],'scene--company-partners','#eef4fd');
       contact();
     }else if(chapter===1){
       const data=q('#data'),imageStack=q('.image-stack',data),dataCopy=q('.split-copy',data);
@@ -250,7 +259,8 @@
       document.addEventListener('click',e=>{
         const link=e.target.closest('a[href]');if(!link||e.defaultPrevented||e.ctrlKey||e.metaKey||e.shiftKey||link.target||link.hasAttribute('download'))return;
         const url=new URL(link.href,location.href);if(url.origin!==location.origin||!url.pathname.endsWith('.html')||url.pathname===location.pathname)return;
-        e.preventDefault();deck.animate([{opacity:1},{opacity:0}],{duration:240,easing:'ease-out',fill:'forwards'}).finished.then(()=>location.assign(url.href));
+        // Keep the outgoing document painted while the destination loads.
+        e.preventDefault();deck.animate([{opacity:1},{opacity:.78}],{duration:200,easing:'ease-out',fill:'forwards'}).finished.then(()=>location.assign(url.href));
       });
     }
     // Warm the five lightweight HTML documents; shared imagery remains browser-cached.

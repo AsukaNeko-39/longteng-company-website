@@ -1,3 +1,32 @@
+// Fade the visible panel out before introducing its replacement. Rapid input
+// cancels the previous transition so the most recent selection always wins.
+const panelMotions=new WeakMap();
+window.companyMotion={async swap(host,panels,target,animate=true){
+  if(!host||!target)return;
+  const pending=panelMotions.get(host),opacity=getComputedStyle(host).opacity;
+  pending?.animation?.cancel();
+  const previous=panels.find(panel=>!panel.hidden);
+  const baseline=pending?.baseline??host.style.minHeight;
+  const apply=()=>panels.forEach(panel=>{panel.hidden=panel!==target;panel.inert=panel!==target;});
+  if(!animate||matchMedia('(prefers-reduced-motion:reduce)').matches){
+    panelMotions.delete(host);host.style.minHeight=baseline;host.removeAttribute('aria-busy');apply();return;
+  }
+  if(previous===target&&!pending){apply();return;}
+  const state={baseline,animation:null};panelMotions.set(host,state);
+  host.style.minHeight=host.getBoundingClientRect().height+'px';host.setAttribute('aria-busy','true');
+  previous&&(previous.inert=true);
+  try{
+    if(previous&&previous!==target){
+      state.animation=host.animate([{opacity,transform:'translateY(0)'},{opacity:0,transform:'translateY(-5px)'}],{duration:190,easing:'cubic-bezier(.4,0,1,1)',fill:'both'});
+      await state.animation.finished.catch(()=>{});if(panelMotions.get(host)!==state)return;
+    }
+    apply();state.animation?.cancel();
+    state.animation=host.animate([{opacity:previous===target?opacity:0,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],{duration:470,delay:60,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'});
+    await state.animation.finished.catch(()=>{});
+  }finally{
+    if(panelMotions.get(host)===state){state.animation?.cancel();host.style.minHeight=baseline;host.removeAttribute('aria-busy');panelMotions.delete(host);}
+  }
+}};
 const menu = document.querySelector('.menu-toggle');
 const nav = document.querySelector('#main-nav');
 menu?.addEventListener('click', () => {
@@ -65,8 +94,8 @@ document.querySelectorAll('[data-expertise]').forEach(explorer => {
   function activate(tab) {
     for (const t of tabs) {
       const active=t===tab;t.setAttribute('aria-selected',String(active));t.tabIndex=active?0:-1;
-      explorer.querySelector('#'+t.dataset.expertiseTab).hidden=!active;
     }
+    window.companyMotion.swap(explorer.querySelector('.expertise-panels'),tabs.map(t=>explorer.querySelector('#'+t.dataset.expertiseTab)),explorer.querySelector('#'+tab.dataset.expertiseTab));
   }
   tabs.forEach((tab,i)=>{
     tab.addEventListener('click',()=>activate(tab));
