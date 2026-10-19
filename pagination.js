@@ -21,6 +21,7 @@
     const para=text=>{const n=document.createElement('p');n.textContent=text;return n;};
     const deck=div('page-deck');
     const scenes=[];
+    let selectHomeMap=()=>{};
     function sheet(id,title,nodes,kind='',tone='#ffffff'){
       const n=document.createElement('section');n.id='view-'+id;n.className='scene '+kind;n.dataset.title=title;n.dataset.tone=tone;
       n.setAttribute('role','group');n.setAttribute('aria-roledescription','页面');n.setAttribute('aria-label',title);
@@ -35,28 +36,39 @@
       return sheet('overview',names[chapter],[div('scene-grid chapter-lead',[copy,image])],'scene--lead');
     }
     function contact(band=q('.contact-band')){
-      if(band)sheet('contact','业务咨询与合作',[band,clone(originalFooter)],'scene--contact','#edf4fd');
+      if(band){const page=sheet('contact','业务咨询与合作',[band,clone(originalFooter)],'scene--contact','#edf4fd');if(chapter===0)page.dataset.auxiliary='true';}
     }
     if(chapter===0){
-      const hero=q('.flagship');const first=q('.flagship-top>div',hero);first.classList.add('hero-copy');first.append(q('.flagship-intro',hero));
-      sheet('overview','多源空间数据与行业应用',[div('scene-grid hero-grid',[first,q('.flagship-visual',hero)]),q('.hero-bottom-line',hero)],'scene--hero');
+      const hero=q('.flagship'),heroTitle=q('h1',hero);
+      heroTitle.innerHTML='多源空间数据<em>赋能行业应用</em>';
+      sheet('overview','多源空间数据与行业应用',[q('.eyebrow',hero),heroTitle,div('scene-grid hero-grid',[q('.flagship-intro',hero),q('.flagship-visual',hero)]),q('.hero-bottom-line',hero)],'scene--hero scene--hero-centered');
       const expertise=q('.expertise-section');
-      if(compact){
-        const tabs=qa('[data-expertise-tab]',expertise);
-        tabs.forEach((tab,i)=>{
-          const panel=q('#'+tab.dataset.expertiseTab,expertise);panel.hidden=false;panel.removeAttribute('role');panel.removeAttribute('aria-labelledby');
-          const name=q('b',tab).textContent;
-          sheet('capability-'+i,name,[titleBlock('能力与服务 / 0'+(i+1),name,q('small',tab).textContent),panel],'scene--capability');
-        });
-      }else sheet('capabilities','多源空间数据与地理信息平台',[expertise],'scene--expertise');
-      const mapHeader=clone(q('.signature-maps .section-heading'));
-      sheet('agri','农耕文化地图',[q('.signature-farm')],'scene--signature','#f5f3e9');
-      sheet('football','湘超数字地图',[q('.signature-football')],'scene--signature','#edf4fd');
+      if(mobile)q('.expertise-options',expertise).setAttribute('aria-orientation','horizontal');
+      sheet('capabilities','多源空间数据与地理信息平台',[expertise],'scene--expertise');
+      const mapCopies=div('map-project-copy'),photos=div('map-photo-stack'),mapShowcase=div('map-showcase',[mapCopies,photos]);
+      const mapProjects=[['agri','农耕文化地图','.signature-farm','.signature-screen img'],['football','湘超数字地图','.signature-football','.football-desktop img']];
+      const mapButtons=[];
+      function selectMap(id){
+        mapShowcase.dataset.active=id;
+        for(const button of mapButtons){const active=button.dataset.project===id;button.setAttribute('aria-pressed',String(active));button.setAttribute('aria-label',(active?'当前展示：':'切换至')+button.dataset.name);}
+        qa('.signature-copy',mapCopies).forEach(copy=>{copy.hidden=copy.dataset.project!==id;});
+      }
+      selectHomeMap=selectMap;
+      mapProjects.forEach(([id,name,selector,imageSelector])=>{
+        const project=q(selector),copy=q('.signature-copy',project);copy.id='home-map-'+id;copy.dataset.project=id;mapCopies.append(copy);
+        const button=document.createElement('button');button.type='button';button.className='map-photo';button.dataset.project=id;button.dataset.name=name;button.setAttribute('aria-controls',copy.id);
+        const label=document.createElement('span');label.className='map-photo-label';label.textContent=name;
+        button.append(q(imageSelector,project),label);button.addEventListener('click',()=>selectMap(id));
+        button.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();e.stopPropagation();const other=mapButtons.find(b=>b!==button);selectMap(other.dataset.project);other.focus({preventScroll:true});}});
+        mapButtons.push(button);photos.append(button);
+      });
+      selectMap('agri');
+      const mapHint=para('点击相片切换项目');mapHint.className='map-switch-hint';photos.append(mapHint);
+      sheet('maps','农耕文化与湘超数字地图',[titleBlock('02 / SIGNATURE MAPS','专题地理信息与特色地图应用'),mapShowcase],'scene--map-showcase','#f3f6fa');
       const homeCase=q('.home-case');
       if(shortPhone){q('.section-heading',homeCase)?.remove();q('.scenario-links',homeCase)?.remove();}
       sheet('case','智慧园区应用',[homeCase],'scene--home-case');
-      sheet('company','公司与技术团队',[q('.home-about')],'scene--home-about','#edf5f6');
-      sheet('partners','产学研协同与行业合作',[q('.partner-line')],'scene--partner');
+      sheet('company','公司团队与产学研合作',[q('.home-about'),q('.partner-line')],'scene--company-partners','#edf5f6');
       contact();
     }else if(chapter===1){
       const data=q('#data'),imageStack=q('.image-stack',data),dataCopy=q('.split-copy',data);
@@ -139,6 +151,7 @@
       }else sheet('contact','业务咨询与技术合作',[contactSection,clone(originalFooter)],'scene--address','#edf4fd');
     }
     const frames=scenes.filter(s=>s.querySelector('.scene-body').children.length);
+    const primaryFrames=frames.filter(s=>s.dataset.auxiliary!=='true');
     if(!frames.length)throw Error('Empty presentation');
     for(const frame of frames){
       frame.hidden=false;frame.inert=true;frame.setAttribute('aria-hidden','true');
@@ -146,25 +159,25 @@
     }
     main.replaceChildren(deck);main.setAttribute('tabindex','-1');originalFooter?.remove();document.documentElement.classList.add('paged');document.body.classList.add('paged-site');
     // Replace the legacy, document-scrolling call to action with a page target.
-    qa('a[href="#capabilities"]',main).forEach(a=>{a.setAttribute('href','#'+(compact?'view-capability-0':'view-capabilities'));a.textContent='继续了解能力与服务 →';});
+    qa('a[href="#capabilities"]',main).forEach(a=>{a.setAttribute('href','#view-capabilities');a.textContent='继续了解能力与服务 →';});
     const pager=document.createElement('nav');pager.className='page-controls';pager.setAttribute('aria-label','页面翻阅');
-    pager.innerHTML='<div class="page-controls-inner"><button class="page-menu" aria-haspopup="dialog" aria-label="打开本章目录"><span aria-hidden="true">☷</span><b>本章目录</b></button><div class="page-position"><span class="page-count"></span><span class="page-name"></span></div><div class="page-buttons"><button class="page-prev" aria-label="上一页"><span aria-hidden="true">←</span></button><button class="page-next" aria-label="下一页"><span class="page-next-label">下一页</span><span aria-hidden="true">→</span></button></div></div><div class="page-progress" aria-hidden="true"><span></span></div>';
+    pager.innerHTML='<div class="page-controls-inner"><button class="page-menu" aria-haspopup="dialog" aria-label="打开目录"><span aria-hidden="true">☷</span><b>目录</b></button><div class="page-position"><span class="page-count"></span><span class="page-name"></span></div><div class="page-buttons"><button class="page-prev" aria-label="上一页"><span aria-hidden="true">←</span></button><button class="page-next" aria-label="下一页"><span aria-hidden="true">→</span></button></div></div><div class="page-progress" aria-hidden="true"><span></span></div>';
     document.body.append(pager);
-    const directory=document.createElement('dialog');directory.className='page-directory';directory.setAttribute('aria-label','本章目录');
+    const directory=document.createElement('dialog');directory.className='page-directory';directory.setAttribute('aria-label','目录');
     directory.innerHTML='<div class="directory-heading"><div><p>CHAPTER INDEX</p><h2>'+names[chapter]+'</h2></div><button class="directory-close" aria-label="关闭目录">关闭 ×</button></div><ol></ol>';
-    frames.forEach((s,i)=>{const li=document.createElement('li');const b=document.createElement('button');b.innerHTML='<span>'+String(i+1).padStart(2,'0')+'</span><b></b><i aria-hidden="true">↗</i>';b.querySelector('b').textContent=s.dataset.title;b.addEventListener('click',()=>{directory.close();go(i,true);});li.append(b);directory.querySelector('ol').append(li);});document.body.append(directory);
+    frames.forEach((s,i)=>{const li=document.createElement('li');const b=document.createElement('button');b.innerHTML='<span>'+(s.dataset.auxiliary==='true'?'+':String(primaryFrames.indexOf(s)+1).padStart(2,'0'))+'</span><b></b><i aria-hidden="true">↗</i>';b.querySelector('b').textContent=s.dataset.title;b.addEventListener('click',()=>{directory.close();go(i,true);});li.append(b);directory.querySelector('ol').append(li);});document.body.append(directory);
     const live=document.createElement('div');live.className='sr-only';live.setAttribute('role','status');live.setAttribute('aria-live','polite');document.body.append(live);
     const prev=q('.page-prev',pager),next=q('.page-next',pager);
     let current=-1,busy=false;
     const chapterNext=()=>{location.href=routes[(chapter+1)%routes.length];};
     function update(){
-      const s=frames[current];q('.page-count',pager).textContent=String(current+1).padStart(2,'0')+' / '+String(frames.length).padStart(2,'0');q('.page-name',pager).textContent=s.dataset.title;
-      q('.page-progress span',pager).style.width=((current+1)/frames.length*100)+'%';
+      const s=frames[current],primaryIndex=primaryFrames.indexOf(s);
+      q('.page-count',pager).textContent=primaryIndex<0?'附加页':String(primaryIndex+1).padStart(2,'0')+' / '+String(primaryFrames.length).padStart(2,'0');q('.page-name',pager).textContent=s.dataset.title;
+      q('.page-progress span',pager).style.width=(primaryIndex<0?100:(primaryIndex+1)/primaryFrames.length*100)+'%';
       prev.disabled=current===0&&chapter===0;
-      q('.page-next-label',pager).textContent=current===frames.length-1?(chapter===4?'返回首页':'下一章 · '+names[chapter+1]):'下一页';
-      next.setAttribute('aria-label',q('.page-next-label',pager).textContent);
+      next.setAttribute('aria-label',current===frames.length-1?(chapter===4?'返回首页':'下一章 · '+names[chapter+1]):'下一页');
       qa('ol button',directory).forEach((b,i)=>{b.setAttribute('aria-current',i===current?'page':'false');});
-      live.textContent=names[chapter]+'，第'+(current+1)+'页，共'+frames.length+'页：'+s.dataset.title;
+      live.textContent=names[chapter]+'，'+(primaryIndex<0?'附加联系页':'第'+(primaryIndex+1)+'页，共'+primaryFrames.length+'页')+'：'+s.dataset.title;
       document.body.style.setProperty('--scene-bg',s.dataset.tone);
       document.body.dataset.currentPage=String(current+1);
     }
@@ -198,7 +211,8 @@
       const exact=frames.findIndex(s=>s.id===id);if(exact>=0)return exact;
       const target=document.getElementById(id);const owner=target?.closest('.scene');if(owner)return frames.indexOf(owner);
       // IDs of source containers split across pages remain valid deep links.
-      const aliases={capabilities:compact?'view-capability-0':'view-capabilities',agri:'view-agri',football:'view-football',partners:'view-partners',data:'view-data',platform:'view-platform',remote:'view-remote',contact:'view-contact'};
+      if(chapter===0&&['agri','football','view-agri','view-football'].includes(id)){selectHomeMap(id.includes('football')?'football':'agri');return frames.findIndex(s=>s.id==='view-maps');}
+      const aliases={capabilities:'view-capabilities',partners:chapter===0?'view-company':'view-partners','view-partners':chapter===0?'view-company':'view-partners',agri:'view-agri',football:'view-football',data:'view-data',platform:'view-platform',remote:'view-remote',contact:'view-contact'};
       return Math.max(0,frames.findIndex(s=>s.id===aliases[id]));
     }
     next.addEventListener('click',()=>step(1));prev.addEventListener('click',()=>step(-1));
@@ -229,7 +243,7 @@
     main.addEventListener('touchstart',e=>{if(e.touches.length===1){const t=e.touches[0];touch={x:t.clientX,y:t.clientY};}else touch=null;},{passive:true});
     main.addEventListener('touchend',e=>{if(!touch||document.querySelector('dialog[open]'))return;const t=e.changedTouches[0],dx=t.clientX-touch.x,dy=t.clientY-touch.y;touch=null;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.2)step(dx<0?1:-1);},{passive:true});
     // Keep a direct test and accessibility hook without exposing implementation controls in the UI.
-    window.companyPager={go:(index,animated=false)=>go(index,animated),get current(){return current;},get count(){return frames.length;}};
+    window.companyPager={go:(index,animated=false)=>go(index,animated),get current(){return current;},get count(){return frames.length;},get primaryCount(){return primaryFrames.length;}};
     go(hashIndex(),false,!!location.hash);
     const nativeChapterTransition='onpagereveal' in window;
     if(!nativeChapterTransition&&!reduced.matches){
